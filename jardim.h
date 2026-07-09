@@ -6,6 +6,7 @@
 
 #define N_CANTEIROS 5 
 #define CAP_CESTA 3
+#define TEMPO_MURCHAR 3
 
 typedef enum {
     SEMENTE,

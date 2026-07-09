@@ -58,8 +58,19 @@ void* flor_thread(void* arg) {
         imprimeJardim();
         sem_post(&precisa_atencao); // Notifica jardineiro
         
+        // Murchando
+        sleep(TEMPO_MURCHAR);
+        int murchou = 0;
+        sem_wait(&mutex_estado); // Trava acesso
+        if (estado_canteiro[id] == FLORIDA) {
+            estado_canteiro[id] = MURCHA;
+            murchou = 1;
+        }
+        sem_post(&mutex_estado); // Libera acesso
+        if (murchou) imprimeJardim();
+
         // Impede que o ciclo recomece antes de ser colhida
-        while(estado_canteiro[id] == FLORIDA) { 
+        while(estado_canteiro[id] != SEMENTE) { 
             usleep(500000);
         }
     }
@@ -75,7 +86,7 @@ void* jardineiro_thread(void* arg) {
         // Busca uma flor florida
         int alvo = -1;
         for (int i = 0; i < N_CANTEIROS; i++) {
-            if (estado_canteiro[i] == FLORIDA) {
+            if (estado_canteiro[i] == FLORIDA || estado_canteiro[i] == MURCHA) {
                 alvo = i;
                 break;
             }
@@ -88,20 +99,31 @@ void* jardineiro_thread(void* arg) {
             
             sem_wait(&mutex_estado); // Trava acesso
 
-            estado_canteiro[alvo] = SEMENTE;
-            cesta_atual++;
-
-            sem_post(&mutex_estado); // Libera acesso
-            imprimeJardim();
-
-            // Se a cesta estiver cheia, deposita as flores
-            if (cesta_atual == CAP_CESTA) {
-                sleep(2); 
-                sem_wait(&mutex_estado);
-                deposito_total += cesta_atual;
-                cesta_atual = 0;
+            // Colhe a flor florida ou limpa a flor murcha
+            if (estado_canteiro[alvo] == FLORIDA) {
+                estado_canteiro[alvo] = SEMENTE;
+                cesta_atual++;
                 sem_post(&mutex_estado);
                 imprimeJardim();
+
+                // Se a cesta estiver cheia, deposita as flores
+                if (cesta_atual == CAP_CESTA) {
+                    sleep(2); 
+                    sem_wait(&mutex_estado);
+                    deposito_total += cesta_atual;
+                    cesta_atual = 0;
+                    sem_post(&mutex_estado);
+                    imprimeJardim();
+                }
+            } 
+            else if (estado_canteiro[alvo] == MURCHA) {
+                // Perdeu a flor. Apenas limpa o canteiro sem colocar na cesta.
+                estado_canteiro[alvo] = SEMENTE;
+                sem_post(&mutex_estado);
+                imprimeJardim();
+            } 
+            else {
+                sem_post(&mutex_estado);
             }
         }
     }
