@@ -1,7 +1,10 @@
 #ifndef JARDIM_H
 #define JARDIM_H
 
-#define N_CANTEIROS 5
+#include <pthread.h>
+#include <semaphore.h>
+
+#define N_CANTEIROS 5 
 
 typedef enum {
     SEMENTE,
@@ -11,7 +14,9 @@ typedef enum {
 } EstadoCanteiro;
 
 extern EstadoCanteiro estado_canteiro[N_CANTEIROS];
+extern sem_t mutex_estado;
 
 void imprimeJardim();
+void* flor_thread(void* arg);
 
 #endif
