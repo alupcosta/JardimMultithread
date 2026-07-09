@@ -5,8 +5,8 @@
 
 // Imprime a interface no terminal
 void imprimeJardim() {
-    sem_wait(&mutex_estado); // Trava acesso
-    
+    sem_wait(&mutex_estado); // Trava acesso 
+
     system("clear"); 
     printf("JARDIM\n\n");
     printf("  C00   C01   C02   C03   C04\n");
@@ -21,6 +21,14 @@ void imprimeJardim() {
     printf("\n\n");
     printf("Legenda: [   ] Semente | [ . ] Crescendo | [ * ] Florida | [ x ] Murcha\n\n");
     
+    printf("JARDINEIRO:\nCesta: [");
+    for(int i = 0; i < CAP_CESTA; i++) {
+        if(i < cesta_atual) printf("*");
+        else printf(" ");
+    }
+    printf("] %d/%d\n", cesta_atual, CAP_CESTA);
+    printf("DEPOSITO: %d flores guardadas\n", deposito_total);
+
     sem_post(&mutex_estado); // Libera acesso
 }
 
@@ -48,7 +56,54 @@ void* flor_thread(void* arg) {
         estado_canteiro[id] = FLORIDA;
         sem_post(&mutex_estado);
         imprimeJardim();
-        sleep(rand() % 3 + 2); // Mantém florida antes de reiniciar
+        sem_post(&precisa_atencao); // Notifica jardineiro
+        
+        // Impede que o ciclo recomece antes de ser colhida
+        while(estado_canteiro[id] == FLORIDA) { 
+            usleep(500000);
+        }
+    }
+    return NULL;
+}
+
+// Controla o jardineiro
+void* jardineiro_thread(void* arg) {
+    while(1) {
+        sem_wait(&precisa_atencao); // Espera por uma flor florida
+        sem_wait(&mutex_estado); // Trava acesso
+
+        // Busca uma flor florida
+        int alvo = -1;
+        for (int i = 0; i < N_CANTEIROS; i++) {
+            if (estado_canteiro[i] == FLORIDA) {
+                alvo = i;
+                break;
+            }
+        }
+
+        sem_post(&mutex_estado); // Libera acesso
+
+        if (alvo != -1) {
+            sleep(1); // Tempo de colheita
+            
+            sem_wait(&mutex_estado); // Trava acesso
+
+            estado_canteiro[alvo] = SEMENTE;
+            cesta_atual++;
+
+            sem_post(&mutex_estado); // Libera acesso
+            imprimeJardim();
+
+            // Se a cesta estiver cheia, deposita as flores
+            if (cesta_atual == CAP_CESTA) {
+                sleep(2); 
+                sem_wait(&mutex_estado);
+                deposito_total += cesta_atual;
+                cesta_atual = 0;
+                sem_post(&mutex_estado);
+                imprimeJardim();
+            }
+        }
     }
     return NULL;
 }
