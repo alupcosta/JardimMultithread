@@ -22,7 +22,12 @@ Este projeto usa threads e semáforos para simular um jardim onde as flores cres
 - `main.c`: Cria os semáforos, liga as threads e inicia o programa.
 
 ## Como Compilar e Executar
+
 No terminal, estando no diretório com os arquivos do projeto, execute:
-`gcc main.c jardim.c -o jardim -pthread`
-`./jardim` 
-Para finalizar a simulação basta pressionar Ctrl-Z
+
+```bash
+gcc main.c jardim.c -o jardim -pthread
+./jardim
+```
+
+Para finalizar a simulação, pressione `Ctrl+C`.
