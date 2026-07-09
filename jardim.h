@@ -7,6 +7,7 @@
 #define N_CANTEIROS 5 
 #define CAP_CESTA 3
 #define TEMPO_MURCHAR 3
+#define N_JARDINEIROS 2
 
 typedef enum {
     SEMENTE,
@@ -16,9 +17,10 @@ typedef enum {
 } EstadoCanteiro;
 
 extern EstadoCanteiro estado_canteiro[N_CANTEIROS];
-extern int cesta_atual;
+extern int cesta_atual[N_JARDINEIROS];
 extern int deposito_total;
 extern sem_t mutex_estado;
+extern sem_t mutex_tesoura;
 extern sem_t precisa_atencao;
 
 void imprimeJardim();

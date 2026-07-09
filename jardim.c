@@ -20,13 +20,14 @@ void imprimeJardim() {
     }
     printf("\n\n");
     printf("Legenda: [   ] Semente | [ . ] Crescendo | [ * ] Florida | [ x ] Murcha\n\n");
-    
-    printf("JARDINEIRO:\nCesta: [");
-    for(int i = 0; i < CAP_CESTA; i++) {
-        if(i < cesta_atual) printf("*");
-        else printf(" ");
+    for (int i = 0; i < N_JARDINEIROS; i++) {
+        printf("JARDINEIRO %d:\nCesta: [", i);
+        for(int j = 0; j < CAP_CESTA; j++) {
+            if(j < cesta_atual[i]) printf("*");
+            else printf(" ");
+        }
+        printf("] %d/%d\n", cesta_atual[i], CAP_CESTA);
     }
-    printf("] %d/%d\n", cesta_atual, CAP_CESTA);
     printf("DEPOSITO: %d flores guardadas\n", deposito_total);
 
     sem_post(&mutex_estado); // Libera acesso
@@ -79,9 +80,12 @@ void* flor_thread(void* arg) {
 
 // Controla o jardineiro
 void* jardineiro_thread(void* arg) {
+    int id_jardineiro = *(int*)arg;
+
     while(1) {
         sem_wait(&precisa_atencao); // Espera por uma flor florida
-        sem_wait(&mutex_estado); // Trava acesso
+        sem_wait(&mutex_tesoura); // Trava acesso a tesoura
+        sem_wait(&mutex_estado); // Trava acesso ao canteiro
 
         // Busca uma flor florida
         int alvo = -1;
@@ -92,40 +96,41 @@ void* jardineiro_thread(void* arg) {
             }
         }
 
-        sem_post(&mutex_estado); // Libera acesso
+        sem_post(&mutex_estado); // Libera acesso ao canteiro
 
         if (alvo != -1) {
             sleep(1); // Tempo de colheita
-            
-            sem_wait(&mutex_estado); // Trava acesso
+            sem_wait(&mutex_estado); // Trava acesso ao canteiro
 
             // Colhe a flor florida ou limpa a flor murcha
             if (estado_canteiro[alvo] == FLORIDA) {
                 estado_canteiro[alvo] = SEMENTE;
-                cesta_atual++;
-                sem_post(&mutex_estado);
+                cesta_atual[id_jardineiro]++;
+                sem_post(&mutex_estado); // Libera acesso ao canteiro
                 imprimeJardim();
 
                 // Se a cesta estiver cheia, deposita as flores
-                if (cesta_atual == CAP_CESTA) {
+                if (cesta_atual[id_jardineiro] == CAP_CESTA) {
                     sleep(2); 
                     sem_wait(&mutex_estado);
-                    deposito_total += cesta_atual;
-                    cesta_atual = 0;
-                    sem_post(&mutex_estado);
+                    deposito_total += cesta_atual[id_jardineiro];
+                    cesta_atual[id_jardineiro] = 0;
+                    sem_post(&mutex_estado); // Libera acesso ao canteiro
                     imprimeJardim();
                 }
             } 
             else if (estado_canteiro[alvo] == MURCHA) {
                 // Perdeu a flor. Apenas limpa o canteiro sem colocar na cesta.
                 estado_canteiro[alvo] = SEMENTE;
-                sem_post(&mutex_estado);
+                sem_post(&mutex_estado); // Libera acesso ao canteiro
                 imprimeJardim();
             } 
             else {
-                sem_post(&mutex_estado);
+                sem_post(&mutex_estado); // Libera acesso ao canteiro
             }
         }
+
+        sem_post(&mutex_tesoura); // Libera acesso a tesoura
     }
     return NULL;
 }
